@@ -4,7 +4,7 @@ clc
 
 %% Set parameters
 %Monte Carlo
-M_runs   = 50; %% M_runs   = 500;
+M_runs   = 10; %% M_runs   = 500;
 rho_list = [0.1 0.15 0.2 0.25 0.3 0.35]
 
 %NxP matrix with rank K
@@ -28,8 +28,6 @@ sq_e_ls_struct   = zeros(M_runs,length(rho_list));
 % Kezhi
 sq_e_ls_M_ALS          = zeros(M_runs,length(rho_list));
 sq_e_ls_struct_M_ALS   = zeros(M_runs,length(rho_list));
-
-sq_e_struct_simplehankel   = zeros(M_runs,length(rho_list));
 
 % sq_e_struct_simplehankel   = zeros(M_runs,length(rho_list));
 %%%
@@ -59,10 +57,6 @@ store_bias_x_ls_M_ALS        = zeros(M_runs,length(rho_list));
 store_rank_x_ls_struct_M_ALS = zeros(M_runs,length(rho_list));
 store_minsvalue_x_ls_struct_M_ALS = zeros(M_runs,length(rho_list));
 store_bias_x_ls_struct_M_ALS = zeros(M_runs,length(rho_list));
-
-store_rank_x_struct_simplehankel = zeros(M_runs,length(rho_list));
-store_minsvalue_x_struct_simplehankel = zeros(M_runs,length(rho_list));
-store_bias_x_struct_simplehankel = zeros(M_runs,length(rho_list));
 
 % store_rank_x_struct_simplehankel = zeros(M_runs,length(rho_list));
 % store_minsvalue_x_struct_simplehankel = zeros(M_runs,length(rho_list));
@@ -181,12 +175,11 @@ for j = 1:M_runs
         
         %%%%%%%%%%%%%%%%%%
         % Kezhi
-        [X_hat_ls_struct_M_ALS] = func_LS_lowrankrec_proj_kezhi_finalH4( y, A, sigma2_n_tot, N,P,K, abs_tol, rel_tol, x_struct,...
+        [X_hat_ls_struct_M_ALS] = func_LS_lowrankrec_proj_kezhi_finalH3( y, A, sigma2_n_tot, N,P,K, abs_tol, rel_tol, x_struct,...
         0.1, 0.1, 0.1);
     
 
         %[ X_hat_struct_simplehankel, iter_flag ] = simplehankel( y, A, N,P,K,C,constr_tol,max_iter);
-        [ X_hat_struct_simplehankel, iter_flag ] = simplehankel2( y, A, N,P,K);
         %%%%%%%%%%%%%%%%%%%
 
         %Store additional information
@@ -213,10 +206,6 @@ for j = 1:M_runs
         store_minsvalue_x_ls_struct_M_ALS(j,count) = min(svds(X_hat_ls_struct_M_ALS, rank(X_hat_ls_struct_M_ALS)));
         store_bias_x_ls_struct_M_ALS(j,count)  = sum( X_true(:) - X_hat_ls_struct_M_ALS(:) );
         
-        store_rank_x_struct_simplehankel(j,count) = rank(X_hat_struct_simplehankel);
-        store_minsvalue_x_struct_simplehankel(j,count) = min(svds(X_hat_struct_simplehankel, rank(X_hat_struct_simplehankel)));
-        store_bias_x_struct_simplehankel(j,count)  = sum( X_true(:) - X_hat_struct_simplehankel(:) );
-        
 %         store_rank_x_struct_simplehankel(j,count) = rank(X_hat_struct_simplehankel);
 %         store_minsvalue_x_struct_simplehankel(j,count) = min(svds(X_hat_struct_simplehankel, rank(X_hat_struct_simplehankel)));
 %         store_bias_x_struct_simplehankel(j,count)  = sum( X_true(:) - X_hat_struct_simplehankel(:) );
@@ -235,7 +224,6 @@ for j = 1:M_runs
         sq_e_ls_M_ALS(j,count)        = norm(X_true-X_hat_ls_M_ALS,'fro')^2;
         sq_e_ls_struct_M_ALS(j,count) = norm(X_true-X_hat_ls_struct_M_ALS,'fro')^2;
         
-        sq_e_struct_simplehankel(j,count) = norm(X_true-X_hat_struct_simplehankel,'fro')^2;
 %         sq_e_struct_simplehankel(j,count) = norm(X_true-X_hat_struct_simplehankel,'fro')^2;
         %%%
         
@@ -255,8 +243,8 @@ for j = 1:M_runs
         disp('Instantaneous SRER of M-ALS:')
         disp(10*log10(sq_x(j,count)./[sq_e_ls_M_ALS(j,count) sq_e_ls_struct_M_ALS(j,count)] ))
         
-        %disp('Instantaneous SRER of SimpleHankel:')
-        %disp(10*log10(sq_x(j,count)./[sq_e_ls_M_ALS(j,count) sq_e_struct_simplehankel] ))
+     %   disp('Instantaneous SRER of SimpleHankel:')
+     %   disp(10*log10(sq_x(j,count)./[sq_e_ls_M_ALS(j,count) sq_e_struct_simplehankel] ))
         %%%%%%%%%%
         
         disp('CRB:')
@@ -281,7 +269,7 @@ SRER_ls_struct = 10*log10(  mean(sq_x,1)./mean(sq_e_ls_struct,1)  );
 SRER_ls_M_ALS        = 10*log10(  mean(sq_x,1)./mean(sq_e_ls_M_ALS,1)  );
 SRER_ls_struct_M_ALS = 10*log10(  mean(sq_x,1)./mean(sq_e_ls_struct_M_ALS,1)  );
 
-SRER_struct_simplehankel = 10*log10(  mean(sq_x,1)./mean(sq_e_struct_simplehankel,1)  );
+% SRER_struct_simplehankel = 10*log10(  mean(sq_x,1)./mean(sq_e_struct_simplehankel,1)  );
 
 %%%
 
@@ -295,7 +283,7 @@ plot( rho_list, SRER_ls_M_ALS,        'ro--', 'LineWidth', 1.5 ),
 plot( rho_list, SRER_crlb,      'k--', 'LineWidth', 1.5 )
 plot( rho_list, SRER_ls_struct, 'b^-.', 'LineWidth', 1.5 )
 plot( rho_list, SRER_ls_struct_M_ALS, 'ro-.', 'LineWidth', 1.5 )
-plot( rho_list, SRER_struct_simplehankel, 'm*-.', 'LineWidth', 1.5 )
+%plot( rho_list, SRER_struct_simplehankel, 'm*-.', 'LineWidth', 1.5 )
 plot( rho_list, SRER_crlb_struct, 'k-', 'LineWidth', 1.5 )
 
 %%%
@@ -303,8 +291,8 @@ plot( rho_list, SRER_crlb_struct, 'k-', 'LineWidth', 1.5 )
 %%%
 
 xlabel('\xi'), ylabel('SRER [dB]')
- legend('ALS','D-ALS','CRB', 'ALS-hankel','D-ALS-hankel', 'Simple-Hankel','CRB-hankel')
-%legend('ALS','D-ALS','CRB', 'ALS-hankel','D-ALS-hankel', 'CRB-hankel')
+% legend('ALS','D-ALS','CRB', 'ALS-hankel','D-ALS-hankel', 'Simple-Hankel','CRB-hankel')
+legend('ALS','D-ALS','CRB', 'ALS-hankel','D-ALS-hankel', 'CRB-hankel')
 %% Save data
 %save MC_results_rho_001_hank_kezhi3   N P K x_struct rho M_runs rho_list SMNR_emp SRER_ls SRER_ls_struct SRER_crlb SRER_crlb_struct  sq_x sq_n  sq_e_ls sq_e_ls_struct sq_e_crlb sq_e_crlb_struct
 

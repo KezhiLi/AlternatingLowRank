@@ -1,4 +1,4 @@
-function [ X_hat ] = func_DALS1_Proj5( y, A, sigma2_noise, N,P,K, abs_tol, rel_tol, x_struct, rho, rho2, rho3,rho4 )
+function [ X_hat ] = func_DALS1_Proj51( y, A, sigma2_noise, N,P,K, abs_tol, rel_tol, x_struct, rho, rho2, rho3,rho4 )
 %% Alternating Least-Squares (ILS) Low-Rank Matrix Reconstruction
 %Alternating solution to X = arg min || y - A(X) ||^2_,2 subject to rank(X) = K
 %In addition: X can have linear structure: Hankel, Toeplitz, Circulant

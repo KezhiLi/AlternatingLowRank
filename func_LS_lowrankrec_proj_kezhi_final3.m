@@ -1,4 +1,4 @@
-function [ X_hat ] = func_DALS1( y, A, sigma2_noise, N,P,K, abs_tol, rel_tol, x_struct, rho, rho2, rho3,rho4 )
+function [ X_hat ] = func_LS_lowrankrec_proj_kezhi_final3( y, A, sigma2_noise, N,P,K, abs_tol, rel_tol, x_struct, rho, rho2, rho3 )
 %% Alternating Least-Squares (ILS) Low-Rank Matrix Reconstruction
 %Alternating solution to X = arg min || y - A(X) ||^2_,2 subject to rank(X) = K
 %In addition: X can have linear structure: Hankel, Toeplitz, Circulant
@@ -49,35 +49,22 @@ I_p     = speye(P,P);
 
 %Project measurement onto domain of X
 Py              = reshape( A'*y, N,P );
-
-%%%%%%
-HH = Py;
-S = hankelstructure(N,P);
-%%%%%%
 %Py              = reshape( pinv(A)*y, N,P );
-%[U0,Lambda0,V0] = svds( Py, K );
+[U0,Lambda0,V0] = svds( Py, K );
 
-% %Initialize iteration
-% L        = U0*sqrt(Lambda0); %orthonormal
-% % R = pinv(L) * Py;
-% % n_L=norm(L);
-% % n_R=norm(R);
-% % if n_L>n_R
-% %     L=L/sqrt(n_L*n_R);
-% %     R=R*sqrt(n_L*n_R);
-% % else
-% %     R=R/sqrt(n_L*n_R);
-% %     L=L*sqrt(n_L*n_R);
-% % end
+%Initialize iteration
+L        = U0*sqrt(Lambda0); %orthonormal
+% R = pinv(L) * Py;
+% n_L=norm(L);
+% n_R=norm(R);
+% if n_L>n_R
+%     L=L/sqrt(n_L*n_R);
+%     R=R*sqrt(n_L*n_R);
+% else
+%     R=R/sqrt(n_L*n_R);
+%     L=L*sqrt(n_L*n_R);
+% end
 
-theta = pinv(A*S)*y;% not unique if AS singular
-X_hat = reshape(S*theta,N,P); % initial hankel estimate
-L = X_hat(:,1:K); %first r columns
-%R     = pinv(L) * X_hat;
-%L     = X_hat   * pinv(R);
-R     = L\X_hat;
-L     = X_hat/R;
-X_hat = L*R;    
 
 sq_error = inf;
 
@@ -86,8 +73,8 @@ ti=0;
 s=L;
 t=zeros(N,K);
 
-z = pinv(s) * Py;
-%z = sqrt(Lambda0) * V0';
+%z = pinv(s) * Py;
+z = sqrt(Lambda0) * V0';
 
 %z=zeros(K,P);
 u=zeros(K,P);
@@ -101,45 +88,54 @@ while(true)
     %Store residual
     sq_error_old = sq_error;
 % 
-
-%%%%%%%%%%%%%%%%%%%%%%%%%
-%     if prm_struct == 1
-%         X_hat = L*R; 
-%         theta = S\X_hat(:);
-%         X_hat = reshape(S*theta,N,P); 
+%     if ti==1
+%          %Compute R
+%     %-----------------------------
+%     %Least-squares
+%     B_l = A*kron(I_p,L);
+%     R   = reshape( pinv(B_l)*y, K, P );
+% 
+%     %Projection
+%     if prm_struct ~= 0
+%         X_hat = func_project_matrix(L*R, prm_struct);
+%         R     = pinv(L) * X_hat;
 %     end
-%%%%%%%%%%%%%%%%%%%%%%%%
+%     
+%     
+%     %Compute L
+%     %-----------------------------
+%     %Least-squares
+%     B_r = A*kron(R',I_n);
+%     L   = reshape( pinv(B_r)*y, N, K );
+%     
+%     %Projection
+%     if prm_struct ~= 0
+%         X_hat = func_project_matrix(L*R, prm_struct);
+%         L     = X_hat   * pinv(R);
+%     end
+%     
+%     z=R;
+%     s=L;
+%     
+%     else
+        
     %Compute R
     %-----------------------------
     %Least-squares
     B_l = A*kron(I_p,s);
-    [L_1,L_2]=size(B_l);
-    
-    for pp=1:3;
     %R   = reshape( pinv(B_l)*y, K, P );
-    
+    [L_1,L_2]=size(B_l);
     R = inv((B_l')*B_l+rho*eye(L_2))*((B_l')*y+rho*reshape((z-u),K*P,1));
     R = reshape(R, K, P);
     w=R+u*rho2;
     
     %Projection
     if prm_struct ~= 0
-        %X_hat = func_project_matrix(s*w, prm_struct);
-        %z  = pinv(s) * X_hat;
-        
-%        X_hat = s*w;
-%        theta = S\X_hat(:);
-%        X_hat = reshape(S*theta,N,P); 
-     %  z = s\X_hat;    % z = s\X_hat;  
-
-        z = inv(s'*s+rho4*eye(K))*(s'*X_hat+rho4*(R+u)); 
-
+        X_hat = func_project_matrix(s*w, prm_struct);
+        z     = pinv(s) * X_hat;
     else
         z = w;
-    end   
-        u=u+(R-z)*rho3;
     end
-    
     
     %Compute L
     %-----------------------------
@@ -148,93 +144,71 @@ while(true)
     B_r = A*kron(z',I_n);
     %L   = reshape( pinv(B_r)*y, N, K );
     [R_1,R_2]=size(B_r);
-    
-    for pp=1:3;
     L = inv((B_r')*B_r+rho*eye(R_2))*((B_r')*y+rho*reshape((s-t),N*K,1));
     L = reshape(L, N, K);
     v=L+t*rho2;
     
     %Projection
     if prm_struct ~= 0
-        %X_hat = func_project_matrix(v*z, prm_struct);
-        %s     = X_hat   * pinv(z);        
-%        X_hat = v*z;
-%        theta = S\X_hat(:);
-%        X_hat = reshape(S*theta,N,P); 
-    %   s = X_hat/z; %s = X_hat/z;
-    
-        s = (X_hat*z'+rho4*(L+t))*inv(z*z'+rho4*eye(K));
-  
+        X_hat = func_project_matrix(v*z, prm_struct);
+        s     = X_hat   * pinv(z);
     else 
         s = v;
     end
-            t=t+(L-s)*rho3;
-    end
     
-    
-
-    
-    
-%     hh=zeros(N+P-1,2);
-%     for ii = 1:N;
-%         for jj = 1:P;
-%             hh(ii+jj-1,1)=hh(ii+jj-1,1)+X_hat(ii,jj);
-%             hh(ii+jj-1,2)=hh(ii+jj-1,2)+1;
-%         end
+%     if prm_struct ~= 0
+%         X_hat = func_project_matrix(s*z, prm_struct);
+%         z     = pinv(s) * X_hat;
 %     end
-% 
-%     hh_ave=hh(:,1)./hh(:,2); 
 %     
-%     %para1=0.5;
-%     %hh_ave = hh_ave*para1 + *(1-para1);
-% 
-%     HH = hankel(hh_ave(1:N),hh_ave(N:N+P-1));
+%     if prm_struct ~= 0
+%         X_hat = func_project_matrix(s*z, prm_struct);
+%         s     = X_hat   * pinv(z);
+%     end
+    
+%     %Projection
+%     if prm_struct ~= 0
+%         X_hat = func_project_matrix(v*w, prm_struct);
+%     end
+%     
+%     if ~~(ti/2-floor(ti/2)) 
+%         z     = pinv(v) * X_hat;
+%     else
+%         s     = X_hat   * pinv(w);
+%     end
+       
+% n_s=norm(s);
+% n_z=norm(z);
+% if n_s>n_z
+%     s=s/sqrt(n_s*n_z);
+%     z=z*sqrt(n_s*n_z);
+% else
+%     z=z/sqrt(n_s*n_z);
+%     s=s*sqrt(n_s*n_z);
+% end
 
-
-X_hat = s*z;
-if prm_struct ~= 0
-    X_hat=func_project_matrix(X_hat, prm_struct);
-end
+    u=u+(R-z)*rho3;
+    t=t+(L-s)*rho3;
+    
+    
   %  end
     
     %Compute residual
     %-----------------------------
-    resid    = y - A*reshape( X_hat, N*P, 1 );
+    resid    = y - A*reshape( s*z, N*P, 1 );
     sq_error = resid'*resid;
     disp(sq_error)
     if (sq_error < 0.1*sigma2_noise )  || (sq_error_old/sq_error < rel_tol)
-    %if (ti>30)  || (sq_error < 0.1*sigma2_noise)
     %if ti>20
         sq_error = sq_error_old; 
         break; %terminate
     end
 
-   
 end
 
 %Produce estimate
 %---------------
 X_hat = s*z;
-
-if prm_struct ~= 0
-    
-% hh=zeros(N+P-1,2);
-% for ii = 1:N;
-%     for jj = 1:P;
-%         hh(ii+jj-1,1)=hh(ii+jj-1,1)+X_hat(ii,jj);
-%         hh(ii+jj-1,2)=hh(ii+jj-1,2)+1;
-%     end
-% end
-% 
-% hh_ave=hh(:,1)./hh(:,2);
-% 
-% HH = hankel(hh_ave(1:N),hh_ave(N:N+P-1));
-%     
-% X_hat =HH;
-X_hat=func_project_matrix(X_hat, prm_struct);
-
-end
-
 %X_hat = L*R;
 
 %X_hat = func_project_matrix(s*z, prm_struct);
@@ -279,13 +253,9 @@ function [hh] = func_lsqhank(hin)
     tmp=flipud(tmp);
     hh = hankel(tmp(1:m), tmp(m:end));
 end
-%%%%%%%%%%%%%%%%%%%%%
-% function [Xhat] = func_lsqhank(hin)
-%  hh=hankel_proj(hin);
-%  N=(length(hh)+1)/2;
-%  Xhat = hankel(hh(1:N),hh(N:end));
-% end
-%%%%%%%%%%%%%%%%%%%%%%%
+
+
+
 %--------------------------------------
 function [X] = func_lsqtoep(X)
 

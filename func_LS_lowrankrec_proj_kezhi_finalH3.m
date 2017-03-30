@@ -70,7 +70,6 @@ S = hankelstructure(N,P);
 % %     L=L*sqrt(n_L*n_R);
 % % end
 
-if prm_struct == 1
 theta = pinv(A*S)*y;% not unique if AS singular
 X_hat = reshape(S*theta,N,P); % initial hankel estimate
 L = X_hat(:,1:K); %first r columns
@@ -79,7 +78,6 @@ L = X_hat(:,1:K); %first r columns
 R     = L\X_hat;
 L     = X_hat/R;
 X_hat = L*R;    
-end
 
 sq_error = inf;
 
@@ -130,11 +128,12 @@ while(true)
 %         X_hat = s*w;
 %         theta = S\X_hat(:);
 %         X_hat = reshape(S*theta,N,P); 
-        z  = pinv(s) * X_hat;
+        z     = pinv(s) * X_hat;
         %z = s\X_hat;
     else
         z = w;
-    end   
+    end
+    
         u=u+(R-z)*rho3;
     end
     
@@ -196,8 +195,7 @@ while(true)
     resid    = y - A*reshape( s*z, N*P, 1 );
     sq_error = resid'*resid;
     disp(sq_error)
-    %if (sq_error < 0.1*sigma2_noise )  || (sq_error_old/sq_error < rel_tol)
-    if (ti>30)  || (sq_error < 0.1*sigma2_noise)
+    if (sq_error < 0.1*sigma2_noise )  || (sq_error_old/sq_error < rel_tol)
     %if ti>20
         sq_error = sq_error_old; 
         break; %terminate
@@ -225,7 +223,6 @@ hh_ave=hh(:,1)./hh(:,2);
 HH = hankel(hh_ave(1:N),hh_ave(N:N+P-1));
     
 X_hat =HH;
-%X_hat=func_project_matrix(X_hat, prm_struct);
 
 end
 
@@ -273,13 +270,9 @@ function [hh] = func_lsqhank(hin)
     tmp=flipud(tmp);
     hh = hankel(tmp(1:m), tmp(m:end));
 end
-%%%%%%%%%%%%%%%%%%%%%
-% function [Xhat] = func_lsqhank(hin)
-%  hh=hankel_proj(hin);
-%  N=(length(hh)+1)/2;
-%  Xhat = hankel(hh(1:N),hh(N:end));
-% end
-%%%%%%%%%%%%%%%%%%%%%%%
+
+
+
 %--------------------------------------
 function [X] = func_lsqtoep(X)
 

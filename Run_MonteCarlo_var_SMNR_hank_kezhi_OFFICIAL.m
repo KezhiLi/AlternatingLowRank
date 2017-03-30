@@ -1,23 +1,23 @@
-%Kezhi 2014-04-01
+%Kezhi 2014-02-20
 clear all
 clc
 
 %% Set parameters
 %Monte Carlo
-M_runs    = 20;
+M_runs    = 10;
 SMNR_list = 5:2.5:20
 
 %NxP matrix with rank K
 N        = 80;
 P        = 80;
-K        = 4;  %% 5, or 6
+K        = 4; 
 x_struct = 'hank';
 
 %Measurement dimensions and noise
 rho  = 0.2;
 flag_random_sensing = 1;
 
-Timee = zeros(7,length(SMNR_list));
+
 %% Allocate memory
 sq_x = zeros(M_runs,length(SMNR_list));
 sq_n = zeros(M_runs,length(SMNR_list));
@@ -32,9 +32,6 @@ sq_e_crlb_struct = zeros(M_runs,length(SMNR_list));
 % Kezhi
 sq_e_ls_M_ALS          = zeros(M_runs,length(SMNR_list));
 sq_e_ls_struct_M_ALS   = zeros(M_runs,length(SMNR_list));
-
-sq_e_struct_simplehankel   = zeros(M_runs,length(SMNR_list));
-%sq_e_simple_normal   = zeros(M_runs,length(SMNR_list));
 %%%
 
 %% Algorithm parameters
@@ -42,8 +39,6 @@ sq_e_struct_simplehankel   = zeros(M_runs,length(SMNR_list));
 abs_tol = 1e-6;
 rel_tol = 1.01;
 
-%C=hankelconstraint(N,P);
-%constr_tol=0.001; max_iter=100;
 %% Run Monte Carlo
 tic
 for j = 1:M_runs
@@ -97,13 +92,8 @@ for j = 1:M_runs
 
         %Compute Cramér Rao Bound
         %-----------------------------------------
-        tstart = tic;
         CRLB        = func_computeCRLB( sigma2_n_tot/M, A, X_true, K );
-        Timee(3,round((SMNR-2.5)/2.5))=Timee(3,round((SMNR-2.5)/2.5))+toc(tstart);
-        
-        tstart = tic;
         CRLB_struct = (sigma2_n_tot/M) * crb_hankel_abc(a_prm,c_prm,K,A,N,P);
-        Timee(7,round((SMNR-2.5)/2.5))=Timee(7,round((SMNR-2.5)/2.5))+toc(tstart);
         
         
         % Reconstruction
@@ -128,44 +118,28 @@ for j = 1:M_runs
 %         end
 %         %%%%%%%%%%%%%%%
         
-        tstart = tic;
+        
         [X_hat_ls] = func_LS_lowrankrec_proj( y, A, resid_tol, N,P,K, abs_tol, rel_tol, 'none' );
-        Timee(1,round((SMNR-2.5)/2.5))=Timee(1,round((SMNR-2.5)/2.5))+toc(tstart);
         disp('LS [s]')
         %disp(toc)
         
                 %%%%%%%%%%%%%%%%%%
         % Kezhi
-        %[X_hat_ls_M_ALS] = func_LS_lowrankrec_proj_kezhi_finalH3( y, A, sigma2_n_tot, N,P,K, abs_tol, rel_tol, 'none',...
-        %0.5, 0.5, 0.5);
-        tstart = tic;
-        [X_hat_ls_M_ALS] = func_DALS1_Proj5( y, A, sigma2_n_tot, N,P,K, abs_tol, rel_tol, 'none',...
-        0.5, 0.5, 0.5,0);
-        Timee(2,round((SMNR-2.5)/2.5))=Timee(2,round((SMNR-2.5)/2.5))+toc(tstart);
-    
-        [ X_hat_simple_normal ] = lowrank_ls( y, A, N,P,K);
+        [X_hat_ls_M_ALS] = func_LS_lowrankrec_proj_kezhi_final3( y, A, sigma2_n_tot, N,P,K, abs_tol, rel_tol, 'none',...
+        0.5, 0.5, 0.5);
         %%%%%%%%%%%%%%%%%%%
         
         %Least-Squares structure
         %--------------
         %tic
-        tstart = tic;
         [X_hat_ls_struct] = func_LS_lowrankrec_proj( y, A, sigma2_n_tot, N,P,K, abs_tol, rel_tol, x_struct );
-        Timee(4,round((SMNR-2.5)/2.5))=Timee(4,round((SMNR-2.5)/2.5))+toc(tstart);
         disp('LS structure [s]')
         %disp(toc)
 
                 %%%%%%%%%%%%%%%%%%
         % Kezhi
-        tstart = tic;
-        [X_hat_ls_struct_M_ALS] = func_DALS1_Proj5( y, A, sigma2_n_tot, N,P,K, abs_tol, rel_tol, x_struct,...
-        0.1, 0.1, 0.1,0.01);
-        Timee(6,round((SMNR-2.5)/2.5))=Timee(6,round((SMNR-2.5)/2.5))+toc(tstart);
-    
-        %[ X_hat_struct_simplehankel, iter_flag ] = simplehankel( y, A, N,P,K,C,constr_tol,max_iter);
-        tstart = tic;
-       [ X_hat_struct_simplehankel, iter_flag ] = simplehankel2( y, A, N,P,K);
-       Timee(5,round((SMNR-2.5)/2.5))=Timee(5,round((SMNR-2.5)/2.5))+toc(tstart);
+        [X_hat_ls_struct_M_ALS] = func_LS_lowrankrec_proj_kezhi_final3( y, A, sigma2_n_tot, N,P,K, abs_tol, rel_tol, x_struct,...
+        0.1, 0.1, 0.1);
         %%%%%%%%%%%%%%%%%%%
         
         %Insert other algorithms
@@ -185,10 +159,6 @@ for j = 1:M_runs
         % Kezhi
         sq_e_ls_M_ALS(j,count)        = norm(X_true-X_hat_ls_M_ALS,'fro')^2;
         sq_e_ls_struct_M_ALS(j,count) = norm(X_true-X_hat_ls_struct_M_ALS,'fro')^2;
-        
-        sq_e_struct_simplehankel(j,count) = norm(X_true-X_hat_struct_simplehankel,'fro')^2;
-        %sq_e_simple_normal(j,count) = norm(X_true-X_hat_simple_normal,'fro')^2;
-
         %%%
         
         %Display
@@ -227,10 +197,6 @@ SRER_ls_struct   = 10*log10(  mean(sq_x,1)./mean(sq_e_ls_struct,1)  );
 % Kezhi
 SRER_ls_M_ALS        = 10*log10(  mean(sq_x,1)./mean(sq_e_ls_M_ALS,1)  );
 SRER_ls_struct_M_ALS = 10*log10(  mean(sq_x,1)./mean(sq_e_ls_struct_M_ALS,1)  );
-
-SRER_struct_simplehankel = 10*log10(  mean(sq_x,1)./mean(sq_e_struct_simplehankel,1)  );
-%SRER_simple_normal = 10*log10(  mean(sq_x,1)./mean(sq_e_simple_normal,1)  );
-
 %%%
 
 SRER_crlb        = 10*log10(  mean(sq_x,1)./mean(sq_e_crlb,1)  );
@@ -248,20 +214,14 @@ SRER_crlb_struct = 10*log10(  mean(sq_x,1)./mean(sq_e_crlb_struct,1)  );
 figure
 plot( SMNR_emp, SRER_ls,        'b^--', 'LineWidth', 1.5 ), grid on, hold on, box on
 plot( SMNR_emp, SRER_ls_M_ALS,        'ro--', 'LineWidth', 1.5 ),
-%plot( SMNR_emp, SRER_simple_normal,        'mo--', 'LineWidth', 1.5 ),
 plot( SMNR_emp, SRER_crlb,      'k--', 'LineWidth', 1.5 )
 plot( SMNR_emp, SRER_ls_struct, 'b^-.', 'LineWidth', 1.5 )
 plot( SMNR_emp, SRER_ls_struct_M_ALS, 'ro-.', 'LineWidth', 1.5 )
-plot( SMNR_emp, SRER_struct_simplehankel, 'm*-.', 'LineWidth', 1.5 )
 plot( SMNR_emp, SRER_crlb_struct, 'k-', 'LineWidth', 1.5 )
 axis([min(SMNR_emp) max(SMNR_emp)  -5 inf]); 
 xlabel('SMNR [dB]'), ylabel('SRER [dB]')
-legend('ALS','ADLS','CRB','ALS-hankel','ADLS-hankel', 'ALE-hankel','CRB-hankel')
-%legend('ALS','D-ALS','simple normal','CRB','ALS-hankel','D-ALS-hankel', 'simplehankel','CRB-hankel')
-%legend('ALS','D-ALS','CRB','ALS-hankel','D-ALS-hankel', 'Simple-Hankel','CRB-hankel')
+legend('ALS','D-ALS','CRB','ALS-hankel','D-ALS-hankel', 'CRB-hankel')
  %axis([5 20  -10 40]);
 
 %% Save data
-%save MC_results_SMNR_002_hank   N P K x_struct rho M_runs SMNR_list SMNR_emp   SRER_ls SRER_ls_struct SRER_crlb SRER_crlb_struct  sq_x sq_n  sq_e_ls sq_e_ls_struct sq_e_crlb sq_e_crlb_struct
-
-Time_SMNR = Timee/M_runs
+save MC_results_SMNR_002_hank   N P K x_struct rho M_runs SMNR_list SMNR_emp   SRER_ls SRER_ls_struct SRER_crlb SRER_crlb_struct  sq_x sq_n  sq_e_ls sq_e_ls_struct sq_e_crlb sq_e_crlb_struct
